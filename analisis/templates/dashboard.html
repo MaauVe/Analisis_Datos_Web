@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Análisis de Datos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .chart-container canvas {
+            max-width: 100% !important;
+            max-height: 350px !important;
+            width: 100% !important;
+            height: 350px !important;
+            margin: 0 auto;
+            display: block;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            margin-bottom: 30px;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .table-responsive {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center my-4">Dashboard de Análisis de Datos</h1>
+                
+                <!-- Sección de carga de archivo -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="upload-area">
+                            <h3>Cargar Dataset</h3>
+                            <input type="file" id="csvFile" accept=".csv" class="form-control w-50 mx-auto">
+                            <button onclick="cargarCSV()" class="btn btn-primary mt-3">Analizar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métricas principales -->
+                <div class="row justify-content-center text-center" id="metricas" id="metricas" style="display: none;">
+                    <div class="col-md-3 mx-auto">
+                        <div class="metric-card text-center">
+                            <h3 id="totalFilas">0</h3>
+                            <p>Total Registros</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mx-auto">
+                        <div class="metric-card text-center">
+                            <h3 id="totalColumnas">0</h3>
+                            <p>Columnas</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mx-auto">
+                        <div class="metric-card text-center">
+                            <h3 id="calidadDatos">0%</h3>
+                            <p>Calidad de Datos</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mx-auto">
+                        <div class="metric-card text-center">
+                            <h3 id="columnasProblematicas">0</h3>
+                            <p>Columnas Problemáticas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección de gráficos y tablas -->
+                <div id="graficos" style="display: none;">
+                    <!-- Gráfico de valores nulos -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Columnas con más datos faltantes</h4>
+                                <canvas id="graficoNulos" height="400"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Recomendaciones -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Recomendaciones</h4>
+                                <div id="recomendaciones" class="alert alert-info">
+                                    <strong>Análisis en progreso...</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Gráfico de suma de columnas numéricas -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Suma total de valores numericos por categoria</h4>
+                                <canvas id="graficoSumaNumericas" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tabla resumen numérico -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Resumen Estadístico</h4>
+                                <div class="table-responsive">
+                                    <table class="table table-striped" id="tablaNumericas"></table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tabla de columnas candidatas a fecha -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Columnas Candidatas a Fecha</h4>
+                                <ul id="listaFechas"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Gráfico de acumulado de la primera columna numérica -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Acumulado de la Primera Columna Numérica</h4>
+                                <canvas id="graficoAcumulado" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Gráfico de tipos de datos -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Gráfica de tipos de datos</h4>
+                                <canvas id="graficoTipoDato" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Grafico de valores no nulos por columna -->
+                    <div>
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <h4>Columnas con más datos no nulos</h4>
+                                <canvas id="graficoNoNulos" height="400"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let graficoNulosChart = null;
+        let graficoSumaNumericasChart = null;
+        let graficoCategoricaChart = null;
+        let graficoAcumuladoChart = null;
+        let graficoTipoDatoChart = null;
+        let graficoNoNulosChart = null;
+
+        function cargarCSV() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Por favor selecciona un archivo CSV');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('csv_file', file);
+
+            document.querySelector('.upload-area h3').textContent = 'Procesando...';
+
+            fetch('/upload/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('totalFilas').textContent = data.info.filas.toLocaleString();
+                    document.getElementById('totalColumnas').textContent = data.info.columnas;
+                    document.getElementById('metricas').style.display = 'block';
+                    document.getElementById('graficos').style.display = 'block';
+                    cargarAnalisisNulos();
+                    cargarAnalisisNumericas();
+                    cargarAnalisisFechas();
+                    cargarAnalisisAcumulado();
+                    cargarGraficoTipoDato();
+                    cargarGraficoNoNulos();
+                    document.querySelector('.upload-area h3').textContent = `Dataset Cargado Correctamente: ${data.info.nombre_archivo}`;
+                } else {
+                    alert('Error: ' + data.error);
+                    document.querySelector('.upload-area h3').textContent = 'Cargar Dataset';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cargar el archivo');
+                document.querySelector('.upload-area h3').textContent = 'Cargar Dataset';
+            });
+        }
+
+        function cargarAnalisisNulos() {
+            fetch('/api/nulos/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    return;
+                }
+                const totalColumnas = data.labels.length;
+                const columnasProblematicas = data.columnas_problematicas.length;
+                const calidadDatos = Math.round(((totalColumnas - columnasProblematicas) / totalColumnas) * 100);
+                document.getElementById('calidadDatos').textContent = calidadDatos + '%';
+                document.getElementById('columnasProblematicas').textContent = columnasProblematicas;
+
+                if (graficoNulosChart) graficoNulosChart.destroy();
+                const ctx = document.getElementById('graficoNulos').getContext('2d');
+                graficoNulosChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Valores Nulos',
+                            data: data.valores_nulos,
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true },
+                            x: { ticks: { maxRotation: 45 } }
+                        }
+                    }
+                });
+
+                let recomendaciones= '<ul>';
+                if (columnasProblematicas > 0) {
+                    recomendaciones += `<li>Se encontraron ${columnasProblematicas} columnas con más del 50% de datos faltantes</li>`;
+                    recomendaciones += `<li>Considera eliminar o imputar: ${data.columnas_problematicas.join(', ')}</li>`;
+                } else {
+                    recomendaciones += '<li>Excelente calidad de datos - No se encontraron columnas problemáticas</li>';
+                }
+                if (calidadDatos >= 80) {
+                    recomendaciones += '<li>El dataset tiene una excelente integridad de los datos</li>';
+                } else if (calidadDatos >= 60) {
+                    recomendaciones += '<li>Se requiere limpieza moderada de datos</li>';
+                } else {
+                    recomendaciones += '<li>Se requiere limpieza intensiva de datos</li>';
+                }
+                recomendaciones += '</ul>';
+                document.getElementById('recomendaciones').innerHTML = recomendaciones;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function cargarAnalisisNumericas() {
+            fetch('/api/numericas/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) return;
+
+                // Gráfico de suma de columnas numéricas
+                const labels = data.resumen_numericas.map(x => x.index || x['']);
+                const sumas = data.resumen_numericas.map(x => x.suma);
+
+                if (graficoSumaNumericasChart) graficoSumaNumericasChart.destroy();
+                const ctx = document.getElementById('graficoSumaNumericas').getContext('2d');
+                graficoSumaNumericasChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Suma',
+                            data: sumas,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+
+                // Tabla resumen numérico
+                let tabla = '<thead><tr>';
+                if (data.resumen_numericas.length > 0) {
+                    Object.keys(data.resumen_numericas[0]).forEach(col => {
+                        tabla += `<th>${col}</th>`;
+                    });
+                    tabla += '</tr></thead><tbody>';
+                    data.resumen_numericas.forEach(row => {
+                        tabla += '<tr>';
+                        Object.values(row).forEach(val => {
+                            tabla += `<td>${val !== undefined ? val : ''}</td>`;
+                        });
+                        tabla += '</tr>';
+                    });
+                    tabla += '</tbody>';
+                } else {
+                    tabla += '<tr><td>No hay variables numéricas</td></tr>';
+                }
+                document.getElementById('tablaNumericas').innerHTML = tabla;
+            });
+        }
+
+        function cargarAnalisisFechas() {
+            fetch('/api/fechas/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) return;
+                let lista = '';
+                if (data.candidatas_fecha.length === 0) {
+                    lista = '<li>No se detectaron columnas candidatas a fecha</li>';
+                } else {
+                    data.candidatas_fecha.forEach(col => {
+                        lista += `<li>${col}</li>`;
+                    });
+                }
+                document.getElementById('listaFechas').innerHTML = lista;
+            });
+        }
+
+        function cargarAnalisisAcumulado() {
+            fetch('/api/acumulado/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) return;
+                const labels = Object.keys(data.acumulado);
+                const valores = Object.values(data.acumulado);
+
+                if (graficoAcumuladoChart) graficoAcumuladoChart.destroy();
+                const ctx = document.getElementById('graficoAcumulado').getContext('2d');
+                graficoAcumuladoChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Acumulado',
+                            data: valores,
+                            fill: false,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            });
+        }
+        function cargarGraficoTipoDato() {
+            fetch('/api/tipo_dato/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) return;
+
+                if (graficoTipoDatoChart) graficoTipoDatoChart.destroy();
+                const ctx = document.getElementById('graficoTipoDato').getContext('2d');
+                graficoTipoDatoChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.values,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.6)',
+                                'rgba(54, 162, 235, 0.6)',
+                                'rgba(255, 206, 86, 0.6)',
+                                'rgba(75, 192, 192, 0.6)',
+                                'rgba(153, 102, 255, 0.6)',
+                                'rgba(255, 159, 64, 0.6)'
+                            ],
+                            borderColor: 'rgba(255, 255, 255, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        }
+        function cargarGraficoNoNulos() {
+            fetch('/api/no_nulos/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) return;
+
+                if (graficoNoNulosChart) graficoNoNulosChart.destroy();
+                const ctx = document.getElementById('graficoNoNulos').getContext('2d');
+                graficoNoNulosChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Valores No Nulos',
+                            data: data.values,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true },
+                            x: { ticks: { maxRotation: 45 } }
+                        }
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>
